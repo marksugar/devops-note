@@ -1,0 +1,75 @@
+# task-build-push.yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-and-push
+spec:
+  resources:
+    inputs: # 定义输入资源
+      - name: repo #输入资源，就是gitee的那个仓库
+        type: git
+    outputs: # 定义输出资源
+      - name: linuxea # 输出镜像名字
+        type: image
+  params: # 定义参数
+    - name: DockerfileURL #指明 dockerfile 在仓库中的哪个位置
+      type: string
+      default: $(resources.inputs.repo.path)/tekton/go/Dockerfile # repo资源的路径
+      description: The path to the dockerfile to build
+    - name: pathToContext #指明构建上下文的路径
+      type: string
+      default: $(resources.inputs.repo.path) # repo资源的路径
+      description: the build context used by docker daemon
+  steps:
+    - name: build-and-push
+      image: docker:stable
+      script: |
+        #!/usr/bin/env sh
+        docker login uhub.service.ucloud.cn
+        # echo $(resources.outputs.linuxea.url)
+        # echo $(params.DockerfileURL)
+        # echo $(params.pathToContext)
+        # uhub.service.ucloud.cn/linuxea/golang:v0.1.0
+        # /workspace/repo/tekton/go/Dockerfile
+        # /workspace/repo
+        cd /workspace/repo/tekton/go
+        docker build -t $(resources.outputs.linuxea.url) .
+        # docker build -t $(resources.outputs.linuxea.url) -f $(params.DockerfileURL) $(params.pathToContext)
+        docker push $(resources.outputs.linuxea.url)  # 这边的参数都是在 input 和 output 中定义的
+      env:
+        - name: DOCKER_HOST
+          value: tcp://docker-dind.tekton-pipelines:2375
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: ucloud-image
+spec:
+  type: image
+  params:
+    - name: url
+      value: uhub.service.ucloud.cn/linuxea/golang:v0.1.0 #构建完的镜像名称
+---
+# taskrun-build-push.yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: build-and-push
+spec:
+  serviceAccountName: build-sa # 关联具有harbor认证信息的serviceaccount
+  taskRef:
+    name: build-and-push # 关联定义好的task
+  resources:
+    inputs:
+      - name: repo # 指定输入的仓库资源
+        resourceRef:
+          name: git-res
+    outputs: # 指定输出的镜像资源
+      - name: linuxea
+        resourceRef:
+          name: ucloud-image
+  params:
+    - name: DockerfileURL #指明 dockerfile 在仓库中的哪个位置
+      value: $(resources.inputs.repo.path)/tekton/go/Dockerfile # repo资源的路径
+    - name: pathToContext # 指定构建上下文
+      value: $(resources.inputs.repo.path) # repo资源的路径  

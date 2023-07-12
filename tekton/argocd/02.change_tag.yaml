@@ -1,0 +1,92 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: change-manifests
+spec:
+  workspaces:
+    - name: maven-build-task # 通过pipeline传递过来的name
+  params:
+    - name: git_yaml_url
+      description: Git repository containing manifest files to update
+    - name: git_email
+      default: pipeline@k8s.local
+    - name: git_name
+      default: Tekton Pipeline
+    - name: git_manifest_dir
+      description: Manifests files dir
+    - name: git_branch
+      description: Manifests files branch env      
+    - name: tool_image
+      default: registry.cn-zhangjiakou.aliyuncs.com/marksugar-k8s/git-kustomize-jq:alpine-3.17.4-latest
+    - name: image
+      description: Deploy docker image tag
+  steps:
+    - name: git-manifests-push
+      # image: $(params.tool_image)
+      image: registry.cn-zhangjiakou.aliyuncs.com/marksugar-k8s/git-kustomize-jq:v2
+      workingDir: $(workspaces.maven-build-task.path) 
+      env:
+        - name: GIT_ID_RSA
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-id-rsa
+              key: id-rsa-key
+        - name: GIT_SSH_CONF
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-id-rsa
+              key: config          
+        # - name: GIT_USERNAME
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: gitlab-auth
+        #       key: username
+        #       optional: true
+        # - name: GIT_PASSWORD
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: gitlab-auth
+        #       key: password
+        #       optional: true
+        # - name: GIT_ID_RSA
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: gitlab-id-rsa
+        #       key: id-rsa-key
+        #       optional: true
+      # command: ["/bin/bash"]
+      script: |
+        #!/usr/bin/env sh
+        # create id_rsa
+        export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
+        rm -rf ~/.ssh
+        mkdir -p ~/.ssh
+        echo  ${GIT_ID_RSA} | base64 -d  > ~/.ssh/id_rsa
+        echo ${GIT_SSH_CONF} | base64 -d >  ~/.ssh/config
+        chmod 600 ~/.ssh/id_rsa
+
+        mkdir -p yaml
+        export GITPATH=$(params.git_yaml_url)
+        export PROJECT_NAME=$(echo $GITPATH | awk -F '[/]' '{print $NF}' | awk -F . '{print $1}' )
+
+        git config --global user.email "$(params.git_email)"
+        git config --global user.name "$(params.git_name)"
+        if [ -d yaml/$PROJECT_NAME ]; then
+            cd  yaml/$PROJECT_NAME && git pull && cd $(params.git_manifest_dir)
+            git checkout -b "$(params.git_branch)"            
+            kustomize edit set image demo/linuxea=$(params.image)
+            git add .
+            git commit -m "kustomize change image tag $(params.image)"
+            git push
+        else
+            git clone --branch "$(params.git_branch)" --depth 1 $(params.git_yaml_url) yaml/$PROJECT_NAME
+            cd  yaml/$PROJECT_NAME/$(params.git_manifest_dir)
+            git config --global user.email "$(params.git_email)"
+            git config --global user.name "$(params.git_name)"
+            kustomize edit set image demo/linuxea=$(params.image)
+            git add .
+            git commit -m "kustomize change image tag $(params.image)"
+            git push
+            #git clone --branch "$(params.git_branch)" --depth 1 http://${GIT_USERNAME}:${GIT_PASSWORD}@$(params.git_yaml_url) yaml
+        fi

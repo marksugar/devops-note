@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-demo
+spec:
+  selector:
+    # matchLabels:
+    #   app: linuxea
+  template:
+    metadata:
+      # labels:
+      #   app: linuxea
+    spec:
+      containers:
+        - name: java-demo
+          image: demo/linuxea
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: demo-config
+              mountPath: /config
+      volumes:
+        - name: "demo-config"
+          configMap:
+            name: "demo-configmap"

@@ -1,0 +1,27 @@
+yum -y install nfs-utils rpcbind
+mkdir /data/nfs-k8s
+chown nobody.nobody /data/nfs-k8s
+chmod 755 /data/nfs-k8s
+
+# 修改NFS-SERVER配置
+echo '/data/nfs-k8s 172.16.1.0/24(rw,sync,no_root_squash)' >> /etc/exports
+
+mkdir -p /data/nfs-share
+chown nobody.nobody /data/nfs-share
+# 修改NFS-SERVER配置
+echo '/data/nfs-share 192.168.201.0/24(rw,sync,no_root_squash)' >> /etc/exports
+echo '/data/nfs-share 192.168.210.0/24(rw,sync,no_root_squash)' >> /etc/exports
+
+
+
+echo "MOUNTD_PORT=4001" >> /etc/sysconfig/nfs
+echo "STATD_PORT=4002" >> /etc/sysconfig/nfs
+echo "LOCKD_TCPPORT=4003" >> /etc/sysconfig/nfs
+echo "LOCKD_UDPPORT=4003" >> /etc/sysconfig/nfs
+echo "RQUOTAD_PORT=4004" >> /etc/sysconfig/nfs
+systemctl start rpcbind.service
+systemctl enable rpcbind
+systemctl restart rpcbind.service
+systemctl restart nfs-utils.service 
+systemctl restart nfs-server.service 
+rpcinfo -p|grep nfs

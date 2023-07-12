@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: test-pipelinerun
+spec:
+  serviceAccountName: build-sa # 关联带有认证信息的 ServiceAccount
+  pipelineRef:
+    name: test-pipeline
+  resources:
+    - name: git-res # 指定输入的git仓库资源
+      resourceRef:
+        name: git-res
+    - name: ucloud-image-go # 指定输出的镜像资源
+      resourceRef:
+        name: ucloud-image-go
+  params:
+    - name: image-tag # 传入版本号
+      value: "v0.3.0"

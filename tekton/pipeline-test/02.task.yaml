@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: test
+spec:
+  resources:
+    inputs:
+      - name: repo
+        type: git
+  steps:
+    - name: run-test
+      image: registry.cn-zhangjiakou.aliyuncs.com/marksugar-k8s/golang:1.18.10-alpine3.17
+      workingDir: /workspace/repo
+      script: |
+        #!/usr/bin/env sh
+        cd tekton/go && go test

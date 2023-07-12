@@ -1,0 +1,99 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: maven-java
+spec:
+  # resources:
+  #   inputs:
+  #     - name: source
+  #       type: git        
+  workspaces:
+    - name: maven-build-task # 通过pipeline传递过来的name
+      # mountPath: /workspace/repo
+    # - name: maven-settings
+      # path: ~/      
+  params:
+    - name: ALIYUN_PATH
+      description: aliyun mirrors url
+      type: string
+      # default: "http://maven.aliyun.com/nexus/content/groups/public/" #old
+      default: "https://maven.aliyun.com/repository/public"
+    - name: NEXUS_USER
+      description: local nexus auth user
+      type: string
+      default: ""
+    - name: NEXUS_PASSWORD
+      description: local nexus auth user password
+      type: string
+      default: ""    
+    - name: NEXUS_PATH
+      description: local nexus http url
+      type: string
+      default: "172.16.15.136:8081/repository/maven2-group/"
+  steps:
+    - name: mvn-settings
+      #image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
+      image: registry.cn-hangzhou.aliyuncs.com/marksugar-k8s/bash:5.2.15
+      script: |
+        #!/usr/bin/env bash
+        [[ -f $(workspaces.maven-build-task.path)/settings.xml ]] && \
+        echo 'using existing $(workspaces.maven-build-task.path)/settings.xml' && exit 0
+        
+        cat > $(workspaces.maven-build-task.path)/settings.xml <<EOF
+        <settings>
+          <servers>
+            <!-- The servers added here are generated from environment variables. Don't change. -->
+            <!-- ### SERVER's USER INFO from ENV ### -->
+          </servers>
+          <localRepository>$(workspaces.maven-build-task.path)/Maven/repository</localRepository>
+          <mirrors>
+            <!-- The mirrors added here are generated from environment variables. Don't change. -->
+            <!-- ### mirrors from ENV ### -->
+          </mirrors>
+          <proxies>
+            <!-- The proxies added here are generated from environment variables. Don't change. -->
+            <!-- ### HTTP proxy from ENV ### -->
+          </proxies>
+        </settings>
+        EOF
+        xml=""
+        if [ -n "$(params.ALIYUN_PATH)" ]; then
+          xml="    <mirror>\
+            <id>aliyun</id>\
+            <url>$(params.ALIYUN_PATH)</url>\
+            <mirrorOf>*</mirrorOf>\
+          </mirror>"
+          sed -i "s|<!-- ### mirrors from ENV ### -->|$xml|" $(workspaces.maven-build-task.path)/settings.xml
+        fi
+        if [ -n "$(params.NEXUS_USER)" -a -n "$(params.NEXUS_PASSWORD)" ]; then
+          xml="<server>\
+            <id>nexus</id>"
+          xml="$xml\
+                <username>$(params.NEXUS_USER)</username>\
+                <password>$(params.NEXUS_PASSWORD)</password>"
+          xml="$xml\
+              </server>"
+          sed -i "s|<!-- ### SERVER's USER INFO from ENV ### -->|$xml|" $(workspaces.maven-build-task.path)/settings.xml
+          if [ -n "$(params.NEXUS_PATH)" ]; then
+            xml="    <mirror>\
+              <id>nexus</id>\
+              <url>http://$(params.NEXUS_PATH)</url>\
+              <mirrorOf>central</mirrorOf>\
+            </mirror>"
+            sed -i "s|<!-- ### mirrors from ENV ### -->|$xml|" $(workspaces.maven-build-task.path)/settings.xml
+          fi
+        fi
+    - name: maven-build
+      image: 	uhub.service.ucloud.cn/linuxea/maven:3.8.6-jdk-8
+      workingDir: $(workspaces.maven-build-task.path)/argocd-example/demo
+      script: |
+        #!/usr/bin/env bash
+        # cd java-demo/java-demo
+        # cd argocd-example/java-demo
+        mkdir -p $(workspaces.maven-build-task.path)/m2
+        mvn clean install -Dautoconfig.skip=true \
+        -Dmaven.repo.local=$(workspaces.maven-build-task.path)/m2 \
+        -Dmaven.wagon.http.ssl.insecure=true \
+        -Dmaven.wagon.http.ssl.allowall=true \
+        -Dmaven.test.skip=false \
+        -Dmaven.test.failure.ignore=true -s $(workspaces.maven-build-task.path)/settings.xml

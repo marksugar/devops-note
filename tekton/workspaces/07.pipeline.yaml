@@ -1,0 +1,194 @@
+# workspace-mvn-pipeline.yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: mvn-pipeline
+spec:
+  workspaces: # 声明 workspaces
+    - name: local-maven-repo
+  params:
+    - name: gitrepourl
+      type: string
+      description: The git repo URL to clone from.  
+    - name: revision
+      type: string
+      default: "master"
+    - name: image
+      type: string
+    - name: image-tag
+      type: string
+      default: "v0.1.0"
+    - name: registry_url
+      type: string
+      default: "172.16.100.46"
+    - name: registry_mirror
+      type: string
+      default: "https://ot2k4d59.mirror.aliyuncs.com/"
+    - name: insecure_registry
+      type: string
+      default: "172.16.100.46"
+    # gitops yaml
+    - name: git_yaml_url
+      description: Git repository containing manifest files to update
+    - name: git_email
+      default: linuxea@k8s.local
+    - name: git_name
+      default: Tekton Pipeline
+    - name: git_manifest_dir
+      description: Manifests files dir   
+    - name: git_branch 
+      description: Manifests files branch env
+    # argocd env
+    - name: argocd_url
+      description: argocd_url
+    - name: argocd_secret
+      description: argocd_secret
+    - name: app_name
+      description: app_name
+    - name: app_revision
+      description: app_revision   
+    # sonarqube
+    - name: sonar_project_type
+      description: SonarQube project type | java | node | go | ...
+      default: ""
+    # - name: sonar_project_key
+    #   value: $(params.sonar_project_key)
+    # - name: sonar_project_name
+    #   value: $(params.sonar_project_name)
+    - name: sonar_project_sources
+      description: sources
+      default: ""
+    - name: sonar_project_links_homepage
+      description:  jump links page
+      default: ""      
+    - name: sonar_project_links_ci
+      description:  jump links 
+      default: ""
+    - name: sonar_host_url
+      description: sonar host address
+      default: ""
+    - name: qualityProfile
+      description: qualityProfile is web ui configure rule name
+    - name: sonarAuth 
+      description: sonarqube web ui auth ; and username:password | base64
+  tasks:
+    # git clone
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      workspaces:
+      - name: output
+        workspace: local-maven-repo
+      params:
+        - name: gitrepourl
+          value: $(params.gitrepourl)
+        - name: revision
+          value: $(params.revision)        
+    # image tag
+    - name: get-build-id
+      taskRef:
+        name: generate-build-id
+      params:
+        - name: base-version
+          value: $(params.image-tag)  
+    # mvn build
+    - name: maven-build # 构建任务
+      taskRef:
+        name: maven-java # 引用上面的 mvn 任务
+      runAfter:
+        - get-build-id
+        - git-clone
+        - sonarqube-scanner
+      workspaces: # 传递 workspaces
+        - name: maven-build-task
+          workspace: local-maven-repo
+        # - name: maven-settings
+        #   workspace: local-maven-repo-config
+    # docker build and push    
+    - name:  docker-build-push
+      taskRef:
+        name: docker-build-push
+      runAfter: ["maven-build"] # 需要 build 任务执行完成后
+      params:
+        - name: image
+          value: "$(params.image):$(tasks.get-build-id.results.build-id)"
+        - name: registry_url
+          value: $(params.registry_url)
+        - name: insecure_registry
+          value: $(params.insecure_registry)
+        - name: registry_mirror
+          value: $(params.registry_mirror)
+      workspaces: # 传递 workspaces
+        - name: maven-build-task
+          workspace: local-maven-repo
+    # git yaml change
+    - name:  git-change-manifests
+      taskRef:
+        name: change-manifests
+      runAfter: 
+        - docker-build-push
+      params:
+        - name: image
+          value: "$(params.image):$(tasks.get-build-id.results.build-id)"
+        - name: git_yaml_url
+          value: $(params.git_yaml_url)
+        - name: git_email
+          value: $(params.git_email)
+        - name: git_name
+          value: $(params.git_name)
+        - name: git_manifest_dir
+          value: $(params.git_manifest_dir)
+        - name: git_branch 
+          value: $(params.git_branch)
+      workspaces: # 传递 workspaces
+        - name: maven-build-task
+          workspace: local-maven-repo
+    # argocd app sync
+    - name:  argo-sync-app
+      taskRef:
+        name: argo-sync-app
+      runAfter: 
+        - git-change-manifests
+      params:
+        - name: argocd_url
+          value: $(params.argocd_url)
+        - name: argocd_secret
+          value: $(params.argocd_secret)
+        - name: app_name
+          value: $(params.app_name)
+        - name: app_revision
+          value: $(params.app_revision)
+    # sonarqube
+    - name: sonarqube-scanner
+      runAfter: 
+        - git-clone  
+      taskRef:
+        name: sonarqube-scanner
+      workspaces: # 传递 workspaces
+        - name: maven-build-task
+          workspace: local-maven-repo
+      params:
+        - name: gitrepourl
+          value: $(params.gitrepourl)
+        - name: sonar_project_type
+          value: $(params.sonar_project_type)
+        # - name: sonar_project_name
+        #   value: $(params.sonar_project_name)
+        - name: sonar_project_sources
+          value: $(params.sonar_project_sources)
+        - name: sonar_project_links_homepage
+          value: $(params.sonar_project_links_homepage)
+        - name: sonar_project_links_ci
+          value: $(params.sonar_project_links_ci)
+        - name: git_branch
+          value: $(params.git_branch)
+        - name: sonar_host_url
+          value: $(params.sonar_host_url)
+        - name: revision
+          value: $(params.revision)
+        # - name: sonar_login_token
+        #   value: $(params.sonar_login_token)
+        - name: qualityProfile
+          value: $(params.qualityProfile)
+        - name: sonarAuth 
+          value: $(params.sonarAuth)

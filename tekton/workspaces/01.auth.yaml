@@ -1,0 +1,101 @@
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: ucloud-auth
+#   annotations:
+#     tekton.dev/docker-0: http://uhub.service.ucloud.cn
+# type: kubernetes.io/basic-auth
+# stringData:
+#   username: username
+#   password: password
+---
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: gitlab-auth
+#   annotations:
+#     tekton.dev/git-0: https://gitee.com
+# type: kubernetes.io/basic-auth
+# stringData:
+#   username: username
+#   password: password
+
+ 
+---
+# apiVersion: tekton.dev/v1alpha1
+# kind: PipelineResource
+# metadata:
+#   name: git-java
+#   namespace: default
+# spec:
+#   params:
+#   - name: url
+#     value: https://gitee.com/marksugar/argocd-example
+#   - name: revision
+#     value: master
+#   type: git
+---
+# apiVersion: tekton.dev/v1alpha1
+# kind: PipelineResource
+# metadata:
+#   name: ucloud-image
+# spec:
+#   type: image
+#   params:
+#     - name: url
+#       value: uhub.service.ucloud.cn/linuxea/java  #构建完的镜像名称  
+
+
+
+# kind: Secret
+# apiVersion: v1
+# metadata:
+#   name: my-basic-auth-secret
+# type: Opaque
+# stringData:
+#   .gitconfig: |
+#     [credential "https://<hostname>"]
+#       helper = store
+#   .git-credentials: |
+#     https://<user>:<pass>@<hostname>
+
+# kind: Secret
+# apiVersion: v1
+# metadata:
+#   name: my-ssh-credentials
+# data:
+#   id_rsa: # ... base64-encoded private key ...
+#   known_hosts: # ... base64-encoded known_hosts file ...
+#   config: # ... base64-encoded ssh config file ...
+
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: local-gitlab-ssh-key
+#   annotations:
+#     tekton.dev/git-0: github.com # Described below
+# type: kubernetes.io/ssh-auth
+# stringData:
+#   ssh-privatekey: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBOC82ckMrcE02QTdHVUROS0FzalZrTU1rVmxiSnZWTFRrdnpWMU1ibVBJa2RGQk9QCjFDRXdYMXp6NnZvUDlmM2JGZy9zR3R5QWNINmpsRm9SdE12SFNqL0QwWGRkVld3Y3EwVVJONzF4eEppcnFKZnUKY3FUN2pDTTVzQStTWjlZWWZoazJnL0ZXNWNyOUpQM0hKVm9PMHliWnhBUlNrdDFZbTlaaFVjT3pVNTJvWHIwSQpFUXNsbDZocklYUkhXeENHejg4SkFPTjFvM2p3UFFFbVBtY2xycm5sZWQxVWhWUGkrdi9BNVg1SmNXMzVVOFNLCjlOS2Q2bEsvaE9IN3hCT05RY21HeW1INU50U29lMzc0Wk5lVHZpMktwWC83d1duc1pWMFc3Y0xwcmFnc0ZMeEwKckdXM2FMNWNqRHArbWdhbllKeHhzMEswMmNJNzRHQ0N4VzlZQVFJREFRQUJBb0lCQVFDNHJSVkIyNEdDVTB4KwovNU1STUhtVkxGNmdpdWYvU0dXalo0TmhuWG8rYjNsMjdLZDhZL0o4KzVvVFRGb3dVb2cwMXJCYVZITlNza2VWCnplYUE5WXhPQXAxd09leUc3MkZ6c0w4cmRWUmEvVU5RUkU3U3IxVkY2Sk9OVXZ2NVkrNzk0bytFcG5LalUxVHYKWHJZUTYyMDFITDdPd29iTmFvUGEwQlN4RW5MMDRYRnNzaTZZRFZWOU5EWUp2ajBpaHc3enNkUkFWRmlHcis0dAp1dGZYcWlFeEJSQ2ZxOXo0L21KeEtHVWw2UFY5dzFYRzA3VHZDdXBtUXlXZEVoRk5ZckRoeXM5T3Q1VUFYRC9QCmZqQUwwcDhuT0NvbVk1alZUaW1lY0xtWDdNZlgxMU10Ymg4WndNeGF5dEFldWREOU5neFlGTm9RT25ITkVVZ08Kc3RYczlnakJBb0dCQVBxUmJKUXVIdHZWQmRhS1NxZ1B1QmZRZkwzTVlWTmRObldIRnI5UTZIb3owK3pHR093MwpFZVBTeElGUlN2dExldS9OYmlya0NDUjFXM3dldVZEQzdMTDVoVU9nQmtPcnVLcGxtWmFTeXRQVWpOWEM3bHVTCjRpTmRqMGhidC8wN1lwT1phSCsvZ1Npa1JrcGpWU2MrUXJ2S1hFL29SRFQvMjhJelJGc3NYODVGQW9HQkFQbEkKdzdBM1FJYTZZN21TMDNaSzJWZzJueEUwMWVhWlhqaEFLT3hRSTlBNjJiMzN1UnkwYlFBQmdwOGxlbnkwdHl4bQpydXFjVE9uSzhDUlVXRnprYjh1S1U5Sm5IaWJWejh2bkM2MmM4T0xmaVY5VFFLL0RVREtvL3pUbG5hM3ZSY1FPClo5RnF6RXByUUl1bzBFbE9KVVJYekRwMDAxZ1MzRVdINVQxZ3VZeU5Bb0dCQUwyemRlSGwzUVVRRFVCMUtMcCsKVkNEcmZsVnZzOHVhaVkySFBlaVFSOEdsRlhCd05oUTRTVG9UcXlSQXVLVHlhMXU4U3dqNzVWSTg2NHRYODNNNgpjRnU3MzNIb2FIVzVQN0Q2Qk1MajFkMTBVVC9ST2dab2VQN1BhWmdkb0hsL0NVMjMyazdGWFBLNUZHSmpPK2ZmCkVrVDhtdEVBaHdzZEhuS3p2Ni9MTTZtRkFvR0FKTWMwZjlvVy9nbWZ6dkEzbkpzOFo4UmZRWVdmRFUrUlZCRTcKT0dvMmJuRlFVTE9zcnV4N3JHV01wUGc5a3dxQ2Y5MkNid0N5WkVmWm1ES05ldDhGRTIyTUlsMnVXQ0p4YnU3ZQpqVFc3WUcyRWNmanhjVDBLcHY3QjhFYjBOWVk0cjgxRVNlUk0wYW56TXVlc0d6U1pVUFQzSDZTK3paNnl1dHRxCjJkeGNZNzBDZ1lCNmFQRVc5OVovSFozQ0FNejVPOTlZc1BGZmZGWTQ3WHRIZ1dZYjBJRXVVM29kWUlDOURsQ1IKcHZEVm1yWFV3UktHLzNaTHM2UW5WN1NlVG9VU2QzcDlScitKcUtOcGg4U0t2b1FQZTRReTh0NHpHY2RvQjlpbgphUzFtTVQzTmVqMDFTK2lUb2Z1ZUJWaW5La2dEQm45UTRaK0V6ZjlITkYwbEQ0V1Z0NDZIRFE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
+#   known_hosts: MTcyLjE2OC4yMDQuMzYgZWNkc2Etc2hhMi1uaXN0cDI1NiBBQUFBRTJWalpITmhMWE5vWVRJdGJtbHpkSEF5TlRZQUFBQUlibWx6ZEhBeU5UWUFBQUJCQkd4NHR1eUN0dmhPamhNSXBRZ0JvZ1J6MldhcmZkZVFiUndnZmJHTlNmaTQwcEgxdUF6c2k5bEJtY1hqcjd3SWd1MXpDM29zeEZ4cm41VExxNSttTWowPQoxNzIuMTY4LjIwNC4zNyBlY2RzYS1zaGEyLW5pc3RwMjU2IEFBQUFFMlZqWkhOaExYTm9ZVEl0Ym1semRIQXlOVFlBQUFBSWJtbHpkSEF5TlRZQUFBQkJCR3g0dHV5Q3R2aE9qaE1JcFFnQm9nUnoyV2FyZmRlUWJSd2dmYkdOU2ZpNDBwSDF1QXpzaTlsQm1jWGpyN3dJZ3UxekMzb3N4RnhybjVUTHE1K21NajA9CjE3Mi4xNjguMjA0LjM4IGVjZHNhLXNoYTItbmlzdHAyNTYgQUFBQUUyVmpaSE5oTFhOb1lUSXRibWx6ZEhBeU5UWUFBQUFJYm1semRIQXlOVFlBQUFCQkJHeDR0dXlDdHZoT2poTUlwUWdCb2dSejJXYXJmZGVRYlJ3Z2ZiR05TZmk0MHBIMXVBenNpOWxCbWNYanI3d0lndTF6QzNvc3hGeHJuNVRMcTUrbU1qMD0KMTcyLjE2OC4yMDQuMzkgZWNkc2Etc2hhMi1uaXN0cDI1NiBBQUFBRTJWalpITmhMWE5vWVRJdGJtbHpkSEF5TlRZQUFBQUlibWx6ZEhBeU5UWUFBQUJCQkd4NHR1eUN0dmhPamhNSXBRZ0JvZ1J6MldhcmZkZVFiUndnZmJHTlNmaTQwcEgxdUF6c2k5bEJtY1hqcjd3SWd1MXpDM29zeEZ4cm41VExxNSttTWowPQpbMTcyLjE2OC4yMDQuMzldOjIzODU3IGVjZHNhLXNoYTItbmlzdHAyNTYgQUFBQUUyVmpaSE5oTFhOb1lUSXRibWx6ZEhBeU5UWUFBQUFJYm1semRIQXlOVFlBQUFCQkJFeEcrVG5Rd20zRjVGQUt2Y1laYmxCQ2J1ajNLL1lTaXFMU2xqRlVqeGNYK1Rvc3FqZmZsd212VmVLR3hjVVQrN3grczBXNllLdnptRUhkd1ZTTTgvST0K
+#   config: SG9zdCAqCiAgU3RyaWN0SG9zdEtleUNoZWNraW5nIG5vCg==
+  #base64 -w 0 known_hosts  && echo
+  #base64 -w 0 id_rsa && echo
+---  
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-sa
+secrets:
+  - name: local-harbor-auth
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: local-harbor-auth
+  annotations:
+    tekton.dev/docker-0: http://172.16.100.46
+type: kubernetes.io/basic-auth
+stringData:
+  username: admin
+  password: Harbor12345  

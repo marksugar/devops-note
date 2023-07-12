@@ -1,0 +1,84 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: mvn-pipelinerun
+spec:
+  serviceAccountName: build-sa
+  pipelineRef:
+    name: mvn-pipeline
+  podTemplate:
+    hostAliases:
+    - ip: "172.16.100.80"
+      hostnames:
+      - "grpc.argocd.k8s.local"
+  #   securityContext:
+  #     fsGroup: 65532
+  workspaces:
+    - name: local-maven-repo
+      persistentVolumeClaim:
+        claimName: tekton-workspaces
+    # - name: local-maven-repo-config
+    #   emptyDir: {}
+      # persistentVolumeClaim:
+      #   claimName: tekton-workspaces-config
+    # - name: ssl-creds
+    #   secret:
+    #     secretName: local-gitlab-ssh-key     
+  params:
+    # harbor image tag
+    - name: image
+      value: 172.16.100.46/test/java-demo
+    - name: image-tag # 传入版本号
+      value: "v0.1"
+    # git code path
+    - name: gitrepourl
+      value: ssh://git@172.16.100.47:23857/devops/argocd-example.git
+    - name: revision
+      value: main
+    # gitops  yaml path
+    - name: git_yaml_url
+      value: ssh://git@172.16.100.47:23857/devops/argocd-example.git
+    - name: git_email
+      value: linuxea@k8s.local
+    - name: git_name
+      value: marksugar
+    - name: git_manifest_dir
+      value: kustmoze/overlays/production/
+    - name: git_branch
+      value: main
+    # argocd auth 
+    - name: argocd_secret_auth
+      value: argocd-auth
+    - name: gitlab_configmap_ssh_auth
+      value: gitlab-id-rsa
+    # argocd env
+    - name: argocd_url
+      value: grpc.argocd.k8s.local
+    - name: argocd_secret
+      value: argocd-auth
+    - name: app_name
+      value: argocd/java-demo
+    - name: app_revision
+      value: main
+    # sonarqube
+    # - name: gitrepourl
+    #   value: $(params.gitrepourl)
+    - name: sonar_project_type
+      value: java
+    # - name: sonar_project_name
+    #   value: $(params.sonar_project_name)
+    - name: sonar_project_sources
+      value: src
+    - name: sonar_project_links_homepage
+      value: https://www.linuxea.com
+    - name: sonar_project_links_ci
+      value: http://172.16.100.47/devops/argocd-example
+    - name: sonar_host_url
+      value: 172.16.100.79:9000
+    # echo "admin:admin.com" |base64 
+    # sonarqube web username and password
+    # YWRtaW46YWRtaW4uY29t
+    - name: sonarAuth
+      value: YWRtaW46YWRtaW4uY29t
+    - name: qualityProfile # rule name
+      value: java

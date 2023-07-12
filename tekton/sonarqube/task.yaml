@@ -1,0 +1,163 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: sonarqube-scanner
+  labels:
+    app.kubernetes.io/version: "0.4"
+  annotations:
+    tekton.dev/displayName: "sonarqube scanner"
+spec:
+  description: >-
+    The task sonarqube
+  workspaces:
+    - name: maven-build-task
+  params:
+    - name: gitrepourl  
+    - name: sonar_project_type
+      description: SonarQube project type | java | node | go | ...
+      default: ""
+    # - name: sonar_project_key
+    #   value: $(params.sonar_project_key)
+    # - name: sonar_project_name
+    #   value: $(params.sonar_project_name)
+    - name: sonar_project_sources
+      description: sources
+      default: ""      
+    - name: sonar_project_links_homepage
+      description:  jump links page
+      default: ""      
+    - name: sonar_project_links_ci
+      description:  jump links 
+      default: ""
+    - name: sonar_host_url
+      description: sonar host address
+      default: ""      
+    - name: revision
+      description:  sonar branch
+      default: ""
+    - name: SONAR_SCANNER_IMAGE
+      description: "The sonarqube scanner CLI image which will run the scan"
+      default: "uhub.service.ucloud.cn/marksugar-k8s/sonar-scanner-cli:4.8.0"
+    - name: qualityProfile
+      description: qualityProfile is web ui configure rule name
+    - name: sonarAuth 
+      description: sonarqube web ui auth ; and username:password | base64
+    - name: git_branch
+      description: 
+  steps:
+    - name: sonar-init 
+      image: registry.cn-zhangjiakou.aliyuncs.com/marksugar/sonar-init:v1
+      # echo "admin:admin.com" |base64 
+      # YWRtaW46YWRtaW4uY29t
+      script: |
+        #!/usr/bin/env sh
+        export GITPATH=$(params.gitrepourl)
+        export PROJECT_NAMES=$(echo $GITPATH | awk -F '[/]' '{print $NF}' | awk -F . '{print $1}' )
+        # export TOEKN=$(echo $SONAR_AUTH | base64 -d)
+        cat > /sonar.ini << EOF
+        hostip=$(params.sonar_host_url)
+        projectsName=$PROJECT_NAMES
+        sonarAuth=$(params.sonarAuth)
+        language=$(params.sonar_project_type)
+        qualityProfile=$(params.qualityProfile)
+        EOF
+        cat /sonar.ini
+        /sonar-init
+    - name: sonar-properties-create
+      # image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
+      image: registry.cn-hangzhou.aliyuncs.com/marksugar-k8s/bash:5.2.15
+      workingDir: $(workspaces.maven-build-task.path)
+      env:
+        - name: SONAR_AUTH
+          valueFrom:
+            configMapKeyRef:
+              name: sonarqube-login
+              key: login-auth
+        - name: sonar_project_type
+          value: $(params.sonar_project_type)
+        # - name: sonar_project_key
+        #   value: $(params.sonar_project_key)
+        # - name: sonar_project_name
+        #   value: $(params.sonar_project_name)
+        - name: sonar_project_sources
+          value: $(params.sonar_project_sources)
+        - name: sonar_project_links_homepage
+          value: $(params.sonar_project_links_homepage)
+        - name: sonar_project_links_ci
+          value: $(params.sonar_project_links_ci)
+        - name: sonar_host_url
+          value: $(params.sonar_host_url)
+        # - name: sonar_login_token
+        #   value: $(params.sonar_login_token)
+      script: |
+        #!/usr/bin/env bash
+        mkdir -p $(workspaces.maven-build-task.path)/sonarqube
+        export GITPATH=$(params.gitrepourl)
+        export PROJECT_NAMES=$(echo $GITPATH | awk -F '[/]' '{print $NF}' | awk -F . '{print $1}' )
+        export TOEKN=$(echo $SONAR_AUTH | base64 -d)
+
+        if [[ "${sonar_project_type}" = "java" ]]; then
+        echo "[i] project type java"
+        cat > $(workspaces.maven-build-task.path)/sonarqube/sonar-project.properties <<EOF
+        sonar.projectKey=${PROJECT_NAMES}
+        sonar.projectName=${PROJECT_NAMES}
+        sonar.projectVersion=1.0
+        sonar.ws.timeout=30
+        sonar.sources=${sonar_project_sources}
+        sonar.projectDescription="${PROJECT_NAMES} is {$sonar_project_type}"
+        sonar.links.homepage=${sonar_project_links_homepage}
+        sonar.links.ci=${sonar_project_links_ci}
+        sonar.sourceEncoding=UTF-8
+        sonar.host.url=http://${sonar_host_url}
+        sonar.login=${TOEKN}
+        sonar.java.binaries=target/classes
+        sonar.java.test.binaries=target/test-classes
+        sonar.java.surefire.report=target/surefire-reports
+        sonar.core.codeCoveragePlugin=jacoco
+        sonar.jacoco.reportPaths=target/jacoco.exec
+        sonar.branch.name=$(params.revision)
+        EOF
+        fi
+        if [[ "${sonar_project_type}" = "npm" ]]; then
+        echo "[i] project type java"
+        cat > $(workspaces.maven-build-task.path)/sonarqube/sonar-project.properties <<EOF
+        sonar.projectKey=${PROJECT_NAMES}
+        sonar.projectName=${PROJECT_NAMES}
+        sonar.projectVersion=1.0
+        sonar.ws.timeout=30
+        sonar.sources=${sonar_project_sources}
+        sonar.projectDescription="${PROJECT_NAMES} is {$sonar_project_type}"
+        sonar.links.homepage=${sonar_project_links_homepage}
+        sonar.links.ci=${sonar_project_links_ci}
+        sonar.sourceEncoding=UTF-8
+        sonar.host.url=http://${sonar_host_url}
+        sonar.login=${TOEKN}
+        sonar.core.codeCoveragePlugin=jacoco
+        sonar.jacoco.reportPaths=target/jacoco.exec
+        sonar.branch.name=$(params.revision)
+        EOF
+        fi
+    - name: sonar-scan
+      image: $(params.SONAR_SCANNER_IMAGE)
+      workingDir:  $(workspaces.maven-build-task.path)/argocd-example/demo
+      # command:
+      script: |
+        #!/usr/bin/env bash
+        ls $(workspaces.maven-build-task.path)/sonarqube/
+        sonar-scanner -Dproject.settings=$(workspaces.maven-build-task.path)/sonarqube/sonar-project.properties
+    - name: coverage-rate
+      image: registry.cn-zhangjiakou.aliyuncs.com/marksugar/get-coverage-rate:v2
+      script: |
+        #!/usr/bin/env sh
+        export GITPATH=$(params.gitrepourl)
+        export PROJECT_NAMES=$(echo $GITPATH | awk -F '[/]' '{print $NF}' | awk -F . '{print $1}' )
+        # export TOEKN=$(echo $SONAR_AUTH | base64 -d)
+        cat > /sonar-coverage.ini << EOF
+        hostip=$(params.sonar_host_url)
+        projectsName=$PROJECT_NAMES
+        sonarAuth=$(params.sonarAuth)
+        branch=$(params.git_branch)
+        EOF
+        cat /sonar-coverage.ini
+        chmod +x /get-coverage-rate
+        /get-coverage-rate

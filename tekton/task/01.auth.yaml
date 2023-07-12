@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ucloud-auth
+  annotations:
+    tekton.dev/docker-0: http://uhub.service.ucloud.cn
+type: kubernetes.io/basic-auth
+stringData:
+  username: username
+  password: password
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-sa
+secrets:
+  - name: ucloud-auth
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: git-res
+  namespace: default
+spec:
+  params:
+  - name: url
+    value: https://gitee.com/marksugar/argocd-example
+  - name: revision
+    value: master
+  type: git  

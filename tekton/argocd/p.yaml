@@ -1,0 +1,76 @@
+# workspace-mvn-pipeline.yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: mvn-pipeline
+spec:
+  workspaces: # 声明 workspaces
+    - name: local-maven-repo
+  params:
+    - name: gitrepourl
+      type: string
+      description: The git repo URL to clone from.  
+    - name: revision
+      type: string
+      default: "master"
+    - name: image
+      type: string
+    - name: image-tag
+      type: string
+      default: "v0.1.0"
+    - name: registry_url
+      type: string
+      default: "172.16.100.46"
+    - name: registry_mirror
+      type: string
+      default: "https://ot2k4d59.mirror.aliyuncs.com/"
+    - name: insecure_registry
+      type: string
+      default: "172.16.100.46"
+    # git yaml
+    - name: git_yaml_url
+      description: Git repository containing manifest files to update
+    - name: git_email
+      default: linuxea@k8s.local
+    - name: git_name
+      default: Tekton Pipeline
+    - name: git_manifest_dir
+      description: Manifests files dir    
+  tasks:
+    # git clone
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      workspaces:
+      - name: output
+        workspace: local-maven-repo
+      params:
+        - name: gitrepourl
+          value: $(params.gitrepourl)
+        - name: revision
+          value: $(params.revision)        
+    # image tag
+    - name: get-build-id
+      taskRef:
+        name: generate-build-id
+      params:
+        - name: base-version
+          value: $(params.image-tag)
+    # git yaml change
+    - name:  git-change-manifests
+      taskRef:
+        name: change-manifests       
+      params:
+        - name: image
+          value: "$(params.image):$(tasks.get-build-id.results.build-id)"
+        - name: git_yaml_url
+          value: $(params.git_yaml_url)
+        - name: git_email
+          value: $(params.git_email)
+        - name: git_name
+          value: $(params.git_name)
+        - name: git_manifest_dir
+          value: $(params.git_manifest_dir)
+      workspaces: # 传递 workspaces
+        - name: maven-build-task
+          workspace: local-maven-repo

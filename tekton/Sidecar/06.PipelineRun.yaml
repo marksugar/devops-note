@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: test-sidecar-pipelinerun
+spec:
+  serviceAccountName: build-sa
+  pipelineRef:
+    name: test-sidecar-pipeline
+  resources:
+    - name: git-res # 指定输入的git仓库资源
+      resourceRef:
+        name: git-res
+  params:
+    - name: image
+      value: uhub.service.ucloud.cn/linuxea/golang
+    - name: image-tag # 传入版本号
+      value: "v0.4.1"

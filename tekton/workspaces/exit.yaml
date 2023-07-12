@@ -1,0 +1,52 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: sonarqube-scanner
+  labels:
+    app.kubernetes.io/version: "0.4"
+  annotations:
+    tekton.dev/displayName: "sonarqube scanner"
+spec:
+  description: >-
+    The task sonarqube
+  workspaces:
+    - name: maven-build-task
+  params:
+    - name: gitrepourl  
+    - name: sonar_project_type
+      description: SonarQube project type | java | node | go | ...
+      default: ""
+    # - name: sonar_project_key
+    #   value: $(params.sonar_project_key)
+    # - name: sonar_project_name
+    #   value: $(params.sonar_project_name)
+    - name: sonar_project_sources
+      description: sources
+      default: ""      
+    - name: sonar_project_links_homepage
+      description:  jump links page
+      default: ""      
+    - name: sonar_project_links_ci
+      description:  jump links 
+      default: ""
+    - name: sonar_host_url
+      description: sonar host address
+      default: ""      
+    - name: revision
+      description:  sonar branch
+      default: ""
+    - name: SONAR_SCANNER_IMAGE
+      description: "The sonarqube scanner CLI image which will run the scan"
+      default: "uhub.service.ucloud.cn/marksugar-k8s/sonar-scanner-cli:4.8.0"
+    - name: qualityProfile
+      description: qualityProfile is web ui configure rule name
+    - name: sonarAuth 
+      description: sonarqube web ui auth ; and username:password | base64
+  steps:
+    - name: sonar-init 
+      image: registry.cn-zhangjiakou.aliyuncs.com/marksugar/sonar-init:v1
+      # echo "admin:admin.com" |base64 
+      # YWRtaW46YWRtaW4uY29t
+      script: |
+        #!/usr/bin/env bash
+        exit 1

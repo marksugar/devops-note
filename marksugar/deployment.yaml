@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: marksugar-nginx
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: marksugar
+  template:
+    metadata:
+      labels:
+        app: marksugar
+    spec:
+      containers:
+      - image: registry.cn-hangzhou.aliyuncs.com/marksugar/nginx:v1.0
+        name: marksugar-ui
+        ports:
+        - containerPort: 80

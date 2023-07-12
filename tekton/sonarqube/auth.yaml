@@ -1,0 +1,9 @@
+---  
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sonarqube-login
+data:
+  login-auth: ZWY5NjcxOGE1YmM0N2FlYjhhYWIwYTY5ODk3YWEyY2E2ZjQzNWM1NAo=
+# echo "ef96718a5bc47aeb8aab0a69897aa2ca6f435c54" | base64 
+# ZWY5NjcxOGE1YmM0N2FlYjhhYWIwYTY5ODk3YWEyY2E2ZjQzNWM1NAo=

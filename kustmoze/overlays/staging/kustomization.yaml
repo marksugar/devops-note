@@ -1,0 +1,25 @@
+resources:
+- ../../base
+namePrefix: staging-
+configMapGenerator:
+- name: demo-configmap
+  behavior: merge
+  files:
+    - application.properties
+  literals:
+    - foo=bar
+  env: staging.env
+
+replicas:
+- name: java-demo
+  count: 3
+
+namespace: linuxea-test
+
+commonLabels:
+  app: linuxea
+
+images:
+- name: demo/linuxea
+  newName: test
+  newTag: v1

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: java-demo
+  labels:
+    app: linuxea
+spec:
+  ports:
+    - port: 8080
+  selector:
+    app: sbdemo
+  type: ClusterIP

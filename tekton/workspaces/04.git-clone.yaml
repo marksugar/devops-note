@@ -1,0 +1,82 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-clone
+  description: Read and display README file.
+spec:
+  params:
+    - name: gitrepourl
+      description: The git repo to clone.
+      default: Some message.
+      type: string
+    - name: revision
+      default: main
+      type: string
+      description: ""
+  workspaces:
+  - name: output
+  steps:
+  - name: read
+    image: registry.cn-zhangjiakou.aliyuncs.com/marksugar-k8s/git:alpine-3.17.4
+    workingDir: $(workspaces.output.path)    
+    script: |
+      #!/usr/bin/env sh
+      export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+      echo $GIT_SSH_COMMAND
+      rm -rf ~/.ssh
+      mkdir -p ~/.ssh
+      cat > ~/.ssh/id_rsa << EOF
+      -----BEGIN OPENSSH PRIVATE KEY-----
+      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
+      -----END OPENSSH PRIVATE KEY-----
+      EOF
+      cat >  ~/.ssh/config <<EOF
+      Host *
+      StrictHostKeyChecking no
+      # IdentityFile /tekton/creds/.ssh/id_rsa
+      EOF
+      chmod 600 ~/.ssh/id_rsa
+
+      export GITPATH=$(params.gitrepourl)
+      export PROJECT_NAME=$(echo $GITPATH | awk -F '[/]' '{print $NF}' | awk -F . '{print $1}' )
+
+      if [ -d $PROJECT_NAME ]; then
+          cd  $PROJECT_NAME && git pull     
+      else
+          git clone -b $(params.revision) $(params.gitrepourl) 
+      fi

@@ -1,0 +1,34 @@
+# task-build-push.yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-and-push
+spec:
+  resources:
+    inputs: # 定义输入资源
+      - name: repo #输入资源，就是gitee的那个仓库
+        type: git
+    outputs: # 定义输出资源
+      - name: linuxea # 输出镜像名字
+        type: image
+  params: # 定义参数
+    - name: DockerfileURL #指明 dockerfile 在仓库中的哪个位置
+      type: string
+      default: $(resources.inputs.repo.path)/tekton/go/Dockerfile # repo资源的路径
+      description: The path to the dockerfile to build
+    - name: pathToContext #指明构建上下文的路径
+      type: string
+      default: $(resources.inputs.repo.path) # repo资源的路径
+      description: the build context used by docker daemon    
+  steps:
+    - name: build-and-push
+      image: docker:stable
+      script: |
+        #!/usr/bin/env sh
+        docker login uhub.service.ucloud.cn
+        cd /workspace/repo/tekton/go
+        docker build -t $(resources.outputs.linuxea.url) .
+        docker push $(resources.outputs.linuxea.url)  # 这边的参数都是在 input 和 output 中定义的
+      env:
+        - name: DOCKER_HOST
+          value: tcp://docker-dind.tekton-pipelines:2375
