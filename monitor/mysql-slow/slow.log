@@ -1,0 +1,37 @@
+# User@Host: mark[marksugar] @  [162.75.111.619]
+# Thread_id: 85494781  Schema: marksugar  QC_hit: No
+# Query_time: 5.148472  Lock_time: 0.000112  Rows_sent: 0  Rows_examined: 1
+SET timestamp=1717794725;
+update bbq_pagecods
+     SET uppername = 'ww',
+
+
+        http_action = 'Betys',
+
+
+        game_kind = 5,
+
+
+        sub_game_kind = 1,
+
+
+        cur_page = 1,
+
+
+        last_page = 0,
+
+
+        last_page_check_times = 0,
+
+
+        rounddate = '2024-06-07',
+
+
+        page_size = 0,
+
+
+        yesterday_check_status = 0,
+
+
+        create_time = '2024-06-07 00:13:02'
+    where id = 10214414;
