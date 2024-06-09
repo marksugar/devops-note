@@ -1,0 +1,55 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'WEB_ID', defaultValue: '6000 6001', description: '输入网站id,你至少输入两个连续或者顺时针的id,如：6000 6005')
+//		text(name: 'Code_Type', defaultValue: '更新类型', description: 'm_php_config|m_php|vue_pc|vue_wap')
+        choice(name: 'Code_Type', choices: ['m_php_config', 'm_php','vue_pc','vue_wap'], description: '更新类型')			
+        string(name: 'GIT_TAG', defaultValue: '', description: '不输入版本号将会拉取最新代码')	
+        choice(name: 'Platform', choices: ['Grayscale', 'Online'], description: '选择平台')
+		
+
+    }
+	environment { 
+		def ANSIBLEFILE_HUIDU = "/etc/ansible/manniu-huidu"	
+		def ANSIBLEFILE_Online = "/etc/ansible/manniu"			
+	}
+    stages {
+		stage('网络检查') {
+			steps {
+				echo "检查连通性"
+				script{
+					try {
+						sh '''
+							if [ ! -n "$WEB_ID" ];then
+									exit;
+							elif [ "$Platform" == "Grayscale" ];then								
+								ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m ping
+							elif [ "$Platform" == "Online" ];then
+								ansible -i ${ANSIBLEFILE_Online} ${Platform} -m ping
+							fi
+						'''
+					} catch (e) {
+					currentBuild.result = 'FAILURE'
+					throw e
+					}}}}
+
+		stage('更新代码') {
+			steps {
+				script {
+					try {
+						sh '''
+							if [ ! -n "$WEB_ID" ];then
+									exit;						
+							elif [ "$Platform" == "Grayscale" ];then
+								ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "bash /data/script/upcodeOneByMany.sh $Code_Type '$WEB_ID' $GIT_TAG"
+							elif [ "$Platform" == "Online" ];then
+								ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "bash /data/script/upcodeOneByMany.sh $Code_Type '$WEB_ID' $GIT_TAG"
+							fi
+						'''		
+						
+					} catch (e) {
+					currentBuild.result = 'FAILURE'
+					throw e
+					}}}}
+    }
+}
