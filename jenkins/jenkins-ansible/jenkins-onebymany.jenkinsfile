@@ -1,0 +1,67 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'WEB_ID', defaultValue: '', description: '你只能输入一个网站id')
+//		text(name: 'Code_Type', defaultValue: '更新类型', description: 'm_php_config|m_php|vue_pc|vue_wap')
+//      choice(name: 'Code_Type', choices: ['m_php_config', 'm_php','vue_pc','vue_wap'], description: '更新类型')			
+        string(name: 'GIT_TAG', defaultValue: '', description: '不输入版本号将会拉取最新代码')	
+        choice(name: 'Platform', choices: ['Online', 'Grayscale'], description: '选择平台')
+//      choice(name: 'NEWID', choices: ['No', 'Yes'], description: '选择是不是第一次建站更新代码')
+
+
+    }
+	environment { 
+		def ANSIBLEFILE = "/etc/ansible/guojizhan"
+		def Scode="/data/cmdb_workspace/export"
+		def Dcode="/data/wwwroot"
+	}
+    stages {
+		stage('网络检查') {
+			steps {
+				echo "检查连通性"
+				script{
+					try {
+						sh '''
+							if [ ! -n "$WEB_ID" ];then
+									exit;
+							elif [ "$Platform" == "Grayscale" ];then
+								ansible -i ${ANSIBLEFILE} ${Platform} -m ping
+							elif [ "$Platform" == "Online" ];then
+								ansible -i ${ANSIBLEFILE} ${Platform} -m ping
+							fi
+						'''
+					} catch (e) {
+					currentBuild.result = 'FAILURE'
+					throw e
+					}}}}
+
+		stage('更新代码') {
+			steps {
+				script {
+					try {
+						sh '''
+							if [ ! -n "$WEB_ID" ];then
+								echo "WEB_ID 不可为空"
+								exit;
+							elif [ "$Platform" == "Online" ];then
+								echo $Platform
+								if [ ! -n "$GIT_TAG" ];then
+									for i in ${WEB_ID[@]};do
+										ansible -i ${ANSIBLEFILE} ${Platform} -m shell -a "cd $Scode/${i}vue_pc_wap && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE} ${Platform} -m shell -a "cp -r $Scode/${i}vue_pc_wap/* $Dcode/${i}/ && chown -R 400.400 $Dcode/${i}/"
+									done
+								else
+									for i in ${WEB_ID[@]};do
+										ansible -i ${ANSIBLEFILE} ${Platform} -m shell -a "cd $Scode/${i}vue_pc_wap && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE} ${Platform} -m shell -a "cp -r $Scode/${i}vue_pc_wap/* $Dcode/${i}/ && chown -R 400.400 $Dcode/${i}/"
+									done
+								fi
+							fi
+						'''
+						
+					} catch (e) {
+					currentBuild.result = 'FAILURE'
+					throw e
+					}}}}
+    }
+}

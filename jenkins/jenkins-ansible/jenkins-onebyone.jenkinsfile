@@ -1,0 +1,142 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'WEB_ID', defaultValue: '1000', description: '你只能输入一个网站id')
+//		text(name: 'Code_Type', defaultValue: '更新类型', description: 'm_php_config|m_php|vue_pc|vue_wap')
+        choice(name: 'Code_Type', choices: ['m_php_config', 'm_php','vue_pc','vue_wap'], description: '更新类型')			
+        string(name: 'GIT_TAG', defaultValue: '', description: '不输入版本号将会拉取最新代码')	
+        choice(name: 'Platform', choices: ['Grayscale', 'Online'], description: '选择平台')
+		
+
+    }
+	environment { 
+		def ANSIBLEFILE_HUIDU = "/etc/ansible/huidu"	
+		def ANSIBLEFILE_Online = "/etc/ansible/online"			
+		def Scode="/data/cmdb_workspace/export"
+		def Dcode="/data/wwwroot"		
+	}
+    stages {
+		stage('网络检查') {
+			steps {
+				echo "检查连通性"
+				script{
+					try {
+						sh '''
+							if [ ! -n "$WEB_ID" ];then
+									exit;
+							elif [ "$Platform" == "Grayscale" ];then								
+								ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m ping
+							elif [ "$Platform" == "Online" ];then
+								ansible -i ${ANSIBLEFILE_Online} ${Platform} -m ping
+							fi
+						'''
+					} catch (e) {
+					currentBuild.result = 'FAILURE'
+					throw e
+					}}}}
+
+		stage('更新代码') {
+			steps {
+				script {
+					try {
+						sh '''
+							if [ ! -n "$WEB_ID" ];then
+									exit;						
+							elif [ "$Platform" == "Grayscale" ];then
+								if [ ! -n "$GIT_TAG" ];then
+									if [ "$Code_Type" = "vue_pc" ];then
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_pc && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_pc/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/"
+									elif [ "$Code_Type" = "m_php" ];then
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_php && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_php/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_config && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_config/wcphpsec/config.php $Dcode/${WEB_ID}vue/m/php/config.php"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/"
+									elif [ "$Code_Type" = "m_php_config" ];then
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_config && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_config/wcphpsec/config.php $Dcode/${WEB_ID}vue/m/php/config.php"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/"
+									elif [ "$Code_Type" = "vue_wap" ];then									
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_wap && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "rm -rf $Dcode/${WEB_ID}vue/staticM/js/*.js"	
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_wap/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/"
+									fi
+								else
+									if [ "$Code_Type" = "vue_pc" ];then
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_pc && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_pc/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/${WEB_ID}vue/"
+									elif [ "$Code_Type" = "m_php" ];then
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_php && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_php/* $Dcode/${WEB_ID}vue/"	
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_config && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_config/wcphpsec/config.php $Dcode/${WEB_ID}vue/m/php/config.php"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									elif [ "$Code_Type" = "m_php_config" ];then
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_config && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_config/wcphpsec/config.php $Dcode/${WEB_ID}vue/m/php/config.php"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									elif [ "$Code_Type" = "vue_wap" ];then									
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_wap && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "rm -rf $Dcode/${WEB_ID}vue/staticM/js/*.js"										
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_wap/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_HUIDU} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									fi																	
+								fi
+							elif [ "$Platform" == "Online" ];then
+							    echo $Platform
+								if [ ! -n "$GIT_TAG" ];then
+									if [ "$Code_Type" = "vue_pc" ];then
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_pc && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_pc/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									elif [ "$Code_Type" = "m_php" ];then
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_php && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_php/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_config && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_config/wcphpsec/config.php $Dcode/${WEB_ID}vue/m/php/config.php"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									elif [ "$Code_Type" = "m_php_config" ];then
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_config && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_config/wcphpsec/config.php $Dcode/${WEB_ID}vue/m/php/config.php"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									elif [ "$Code_Type" = "vue_wap" ];then									
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_wap && git pull -u origin master"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "rm -rf $Dcode/${WEB_ID}vue/staticM/js/*.js"										
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_wap/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									fi
+								else
+									if [ "$Code_Type" = "vue_pc" ];then
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_pc && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_pc/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									elif [ "$Code_Type" = "m_php" ];then
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_php && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_php/* $Dcode/${WEB_ID}vue/"	
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_config && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_config/wcphpsec/config.php $Dcode/${WEB_ID}vue/m/php/config.php"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									elif [ "$Code_Type" = "m_php_config" ];then
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_config && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_config/wcphpsec/config.php $Dcode/${WEB_ID}vue/m/php/config.php"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									elif [ "$Code_Type" = "vue_wap" ];then									
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cd $Scode/${WEB_ID}vue_wap && git pull -u origin master && git checkout $GIT_TAG"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "rm -rf $Dcode/${WEB_ID}vue/staticM/js/*.js"										
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "cp -r $Scode/${WEB_ID}vue_wap/* $Dcode/${WEB_ID}vue/"
+										ansible -i ${ANSIBLEFILE_Online} ${Platform} -m shell -a  "chown 400.400 -R $Dcode/${WEB_ID}vue/"
+									fi																	
+								fi								
+							fi
+						'''		
+						
+					} catch (e) {
+					currentBuild.result = 'FAILURE'
+					throw e
+					}}}}
+    }
+}

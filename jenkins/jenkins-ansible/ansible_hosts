@@ -1,0 +1,4 @@
+[Grayscale]
+190.5.110.0  ansible_ssh_user=root ansible_ssh_port=23857
+[Online]
+190.5.111.0  ansible_ssh_user=root ansible_ssh_port=23857
