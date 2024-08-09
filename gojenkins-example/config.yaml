@@ -1,0 +1,17 @@
+app:
+  name: "web app"
+  mode: "dev" # Release
+  port: "8080"
+  version: "v0.1"
+  start_time: "2024-06-18"
+  machine_id: 1  
+log:
+  level: "debug"
+  filename: "logs/app.log"
+  max_size: 200
+  max_age: 3
+  max_backups: 6
+jenkins:
+  url: http://jenkins.com/
+  user: user
+  password:  passwd
