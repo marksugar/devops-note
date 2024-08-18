@@ -1,0 +1,35 @@
+app:
+  name: "web app"
+  mode: "dev" # Release
+  port: "8080"
+  version: "v0.1"
+  start_time: "2024-06-18"
+  machine_id: 1  
+log:
+  level: "debug"
+  filename: "logs/app.log"
+  max_size: 200
+  max_age: 3
+  max_backups: 6
+mysql:
+  host: "127.0.0.1"
+  port: 3306
+  user: "test"
+  password: "123456"
+  db_name: "callback_info"
+  max_open_conns: 20
+  max_idle_conns: 10
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 100
+jenkins:
+  url: http://jenkins.com/
+  user: user
+  password:  passwd
+tgbot:
+  token: 737275:AAEcYBmJ6mW
+tggroup:
+  chatid1: -422
