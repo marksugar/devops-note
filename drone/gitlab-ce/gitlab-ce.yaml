@@ -1,0 +1,40 @@
+version: "2.4"
+services:
+  gitlab-ce:
+    container_name: gitlab-ce
+    image: gitlab/gitlab-ce:17.3.0-ce.0
+    restart: always
+    #    network_mode: host
+    hostname: 192.168.100.22
+    environment:
+      TZ: "Asia/Shanghai"
+      #external_url 'http://172.25.110.31:8090'
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://192.168.100.22'        
+        gitlab_rails['time_zone'] = 'Asia/Shanghai'
+        gitlab_rails['gitlab_shell_ssh_port'] = 23857
+    #        unicorn['port'] = 8888
+    #        nginx['listen_port'] = 80
+    ports:
+      - "88:80"
+      - "8090:8090"
+      - "443:443"
+      - "23857:22"
+    volumes:
+      - /etc/localtime:/etc/localtime
+      # chown -R 998:998 gitlab
+      # user root
+      # docker exec -it gitlab-ce grep 'Password:' /etc/gitlab/initial_root_password
+      - /data/2024/gitlab/config:/etc/gitlab
+      - /data/2024/gitlab/logs:/var/log/gitlab
+      - /data/2024/gitlab/data:/var/opt/gitlab
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50M"
+    mem_limit: 2048M
+    cpus: "7"
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000

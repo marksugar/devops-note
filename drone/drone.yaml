@@ -1,0 +1,58 @@
+version: "2.4"
+services:
+  drone2:
+    container_name: drone2
+    image: drone/drone:2.24.0
+    restart: always
+    #    network_mode: host
+    environment:
+      TZ: "Asia/Shanghai"
+      # DRONE_GITLAB_SERVER: https://172.225.111.31
+      # DRONE_GITLAB_CLIENT_ID:
+      # DRONE_GITLAB_CLIENT_SECRET:
+      DRONE_GOGS_SERVER: http://172.215.11.31:3000
+      DRONE_RPC_SECRET: ca3a92be11ef93106a93272ada38cb0ce6e4e9ef
+      DRONE_SERVER_HOST: 172.25.110.31
+      DRONE_SERVER_PROTO: http
+    ports:
+      - "8000:80"
+      - "1443:443"
+    volumes:
+      - /etc/localtime:/etc/localtime
+      # - /data/2024/drone/config:/etc/gitlab
+      # - /data/2024/drone/logs:/var/log/gitlab
+      - /data/2024/drone/data:/var/lib/drone
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50M"
+    mem_limit: 2048M
+    cpus: "4"
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000
+  drone2-ssh:
+    container_name: drone2-ssh
+    image: drone/drone-runner-ssh
+    restart: always
+    #    network_mode: host
+    environment:
+      TZ: "Asia/Shanghai"
+      DRONE_RPC_SECRET: ca3a92be11ef93106a93272ada38cb0ce6e4e9ef
+      DRONE_RPC_HOST: drone2:8000
+      DRONE_RPC_PROTO: http
+    ports:
+      - "3000:3000"
+    volumes:
+      - /etc/localtime:/etc/localtime
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50M"
+    mem_limit: 2048M
+    cpus: "4"
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000

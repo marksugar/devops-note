@@ -1,0 +1,51 @@
+version: "2.4"
+services:
+  gogs:
+    container_name: gogs
+    image: gogs/gogs:0.13
+    restart: always
+    #    network_mode: host
+    environment:
+      TZ: "Asia/Shanghai"
+    ports:
+      - "10022:22"
+      - "10880:3000"
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - /data/2024/gogs/data:/var/gogs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50M"
+    mem_limit: 2048M
+    cpus: "4"
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000
+  postgres:
+    container_name: postgres
+    image: postgres:16.4-bullseye
+    restart: always
+    #    network_mode: host
+    environment:
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_USER: "root"
+      POSTGRES_DB: "gogs"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    ports:
+      - "5432:5432"
+    volumes:
+      - /etc/localtime:/etc/localtime
+      # chown -R 999:999 /data/2024/postgresql
+      - /data/2024/postgresql/data:/var/lib/postgresql/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50M"
+    mem_limit: 1024M
+    cpus: "4"
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000
